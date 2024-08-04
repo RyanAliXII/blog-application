@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/css/tailwind/build.css" asp-append-version="true" />
+
+</head>
+
+<body>
+
+    <div>
+        <main role="main">
+            @await Html.PartialAsync("_Navbar.cshtml")
+            @RenderBody()
+        </main>
+    </div>
+    <script src="https://kit.fontawesome.com/e3d540c71b.js" crossorigin="anonymous"></script>
+    <script src="~/js/dist/flowbite/flowbite.js" type="module"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+
+</html>

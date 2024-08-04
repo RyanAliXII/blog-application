@@ -1,0 +1,66 @@
+@{
+  var S3Url = ViewData["S3Url"] as string;
+}
+<section id="createPostPage" v-cloak>
+  <div class="container mx-auto p-5">
+    <form v-on:submit.prevent="onSubmit">
+
+
+      <h1 class="text-2xl mb-2">Create Post</h1>
+
+      <button type="submit"
+        class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">
+        <i class="fas fa-save"></i>
+        Save</button>
+
+
+      <div class="flex p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+        v-show="Object.keys(errors ?? {}).length" role="alert">
+        <svg class="flex-shrink-0 inline w-4 h-4 me-3 mt-[2px]" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"
+          fill="currentColor" viewBox="0 0 20 20">
+          <path
+            d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z" />
+        </svg>
+        <span class="sr-only">Danger</span>
+        <div>
+          <span class="font-medium">Ensure that these requirements are met:</span>
+          <ul class="mt-1.5 list-disc list-inside">
+            <li v-for="(value, key) in errors ?? {}">{{value?.[0]}}</li>
+          </ul>
+        </div>
+      </div>
+      @Html.AntiForgeryToken()
+      <div class="py-2">
+
+        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" for="file_input">Thumbnail</label>
+        <input
+          class="block w-full  text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+          ref="thumbnailInput" v-on:change="handleThumbnail" type="file">
+      </div>
+      <div class="py-2">
+        <label for="message" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Title</label>
+        <textarea id="message" rows="4" v-model="form.title"
+          class="block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+          placeholder="Write your posts title..."></textarea>
+      </div>
+
+      <div class="py-2">
+        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Content</label>
+        <div class="px-1">
+          <div ref="editorRef"></div>
+        </div>
+      </div>
+    </form>
+  </div>
+
+</section>
+
+@section Scripts {
+  <script>
+    window.viewData = {
+      s3Url: "@S3Url"
+    }
+
+  </script>
+  <script type="module" src="~/js/dist/post/create.js"></script>
+}

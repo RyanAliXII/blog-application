@@ -1,0 +1,17 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.ce-block__content {
+  max-width: 800px !important;
+  @apply prose;
+}
+.codex-editor {
+  @apply border shadow-gray-300 p-2 rounded;
+}
+.ce-toolbar__content {
+  max-width: 800px !important;
+}
+[v-cloak] {
+  display: none !important;
+}

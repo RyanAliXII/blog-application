@@ -1,0 +1,86 @@
+@model IEnumerable<BlogApplication.Areas.App.Models.Post>;
+@using Slugify;
+@{
+
+    var s3Url = ViewData["s3Url"] as string ?? "";
+    SlugHelper helper = new SlugHelper();
+}
+<section class="bg-white dark:bg-gray-900">
+
+    <div class="py-8 px-4 mx-auto max-w-screen-xl lg:py-16 lg:px-6">
+        <div class="mx-auto max-w-screen-sm text-center lg:mb-16 mb-8">
+            <h2 class="mb-4 text-3xl lg:text-4xl tracking-tight font-extrabold text-gray-900 dark:text-white">Your Posts
+            </h2>
+            <p class="font-light text-gray-500 sm:text-xl dark:text-gray-400">Share your thoughts, experiences, and
+                insights regularly to keep people updated with the latest information.</p>
+        </div>
+        <div class="py-6">
+            <a asp-controller="Post" asp-action="Create"
+                class=" text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">
+                <i class="fas fa-plus"></i>
+                New Post</a>
+        </div>
+        @Html.AntiForgeryToken()
+        <div class="grid gap-8 lg:grid-cols-2">
+            @foreach (var post in Model)
+            {
+                var titleSlug = helper.GenerateSlug(post.Title);
+
+                <article id="post-@post.Id"
+                    class="p-6 bg-white rounded-lg border border-gray-200 shadow-md dark:bg-gray-800 dark:border-gray-700">
+                    @* <div class="flex justify-between items-center mb-5 text-gray-500">
+                <span class="text-sm">14 days ago</span>
+                </div> *@
+                    <div>
+                        @if (post.Thumbnail is not null && post.Thumbnail.Length > 0)
+                        {
+                            <img class="h-40 w-full rounded-lg object-cover" src="@s3Url/@post.Thumbnail" alt="blog-thumbnail">
+                        }
+                        else
+                        {
+                            <img class="h-40 w-full rounded-lg object-cover"
+                                src="https://img.freepik.com/premium-vector/blank-thumbnail-template-background-comic-pop-art-style_530597-2436.jpg">
+                        }
+
+                    </div>
+                    <h1 class="mb-2 text-2xl font-bold tracking-tight text-gray-900 dark:text-white"><a
+                            href="#">@post?.Title</a></h1>
+
+                    <div class="flex justify-between items-center py-2">
+                        <div class="flex items-center space-x-4">
+                            <img class="w-7 h-7 rounded-full"
+                                src="https://ui-avatars.com/api/?name=@post?.User?.GivenName+@post?.User?.Surname"
+                                alt="avatar" />
+                            <span class="font-medium dark:text-white">
+                                @post?.User?.GivenName @post?.User?.Surname
+                            </span>
+                        </div>
+                        <div class="flex gap-1">
+                            <a href="/App/Post/Edit/@post?.Id"
+                                class="text-gray-900 hover:text-white border border-gray-800 hover:bg-gray-900 focus:ring-4 focus:outline-none focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 dark:border-gray-600 dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-600 dark:focus:ring-gray-800">
+                                Edit
+
+                            </a>
+                            <button type="button" post-id="@post?.Id" data-modal-target="deleteConfirmation"
+                                data-modal-toggle="deleteConfirmation"
+                                class="delete-post-btn text-red-700 hover:text-white border border-red-700 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center me-2 mb-2 dark:border-red-500 dark:text-red-500 dark:hover:text-white dark:hover:bg-red-600 dark:focus:ring-red-900">Delete</button>
+
+                            <a href="/blogs/@post?.Id/@titleSlug"
+                                class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">
+                                Read</a>
+                        </div>
+                    </div>
+
+
+                </article>
+
+            }
+        </div>
+    </div>
+    @await Html.PartialAsync("_DeleteConfirmation.cshtml")
+    @section Scripts {
+        <script src="~/js/dist/post/delete.js" type="module"></script>
+    }
+
+
+</section>
