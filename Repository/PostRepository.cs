@@ -9,6 +9,9 @@ namespace BlogApplication.Repository{
        public IEnumerable<Post> GetByUserId(Guid userId){
             return [.. _dbContext.Post.Where(post=> post.UserId == userId).Include(post=>post.User).OrderByDescending(post=> post.CreatedAt)];
        }
+        public IEnumerable<Post> GetAllOrderByLatest(){
+            return [.. _dbContext.Post.Include(post=>post.User).OrderByDescending(post=> post.CreatedAt)];
+       }
        public async Task<Post?> GetByIdWithUser(Guid Id){
          return await _dbContext.Post.Where(post=> post.Id == Id).Include(post=>post.User).SingleOrDefaultAsync();
        }
@@ -17,7 +20,9 @@ namespace BlogApplication.Repository{
     }
     public interface IPostRepository{
         public IEnumerable<Post> GetByUserId(Guid Id);
+        public IEnumerable<Post> GetAllOrderByLatest();
         public Task<Post?> GetByIdWithUser(Guid Id);
+        
         
     }
    

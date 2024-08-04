@@ -170,7 +170,7 @@ namespace BlogApplication.Areas.App.Controllers
                 if(!string.IsNullOrEmpty(post.Thumbnail)){
                     var newThumbnailKey = post.Thumbnail.Replace("temp", "contents");
                     await _fileStorage.CopyFile(bucket, post.Thumbnail, newThumbnailKey);
-                    if(dbPost.Thumbnail != null){
+                    if(dbPost.Thumbnail is not null && dbPost.Thumbnail.Length > 0){
                         await _fileStorage.DeleteFile(bucket, dbPost.Thumbnail);
                     }
                     dbPost.Thumbnail = newThumbnailKey;

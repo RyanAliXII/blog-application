@@ -13,7 +13,7 @@ namespace BlogApplication.Areas.App.Controllers
         protected readonly PostRepository _postRepository;
         protected readonly ILogger<DashboardController> _logger;
         protected readonly UserManager<User> _userManager;
-          protected readonly IConfiguration _config;
+        protected readonly IConfiguration _config;
         public DashboardController(PostRepository postRepository, ILogger<DashboardController> logger, UserManager<User> userManager,  IConfiguration config){
             _postRepository = postRepository;
             _logger = logger;

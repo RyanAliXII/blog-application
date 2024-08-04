@@ -1,4 +1,5 @@
 using BlogApplication.Models;
+using BlogApplication.Repository;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 
@@ -6,16 +7,24 @@ namespace BlogApplication.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly ILogger<HomeController> _logger;
+        protected readonly ILogger<HomeController> _logger;
+        protected readonly PostRepository _postRepository;
+        protected readonly IConfiguration _config;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(ILogger<HomeController> logger, PostRepository postRepository, IConfiguration config )
         {
             _logger = logger;
+            _postRepository = postRepository;
+            _config = config;
         }
 
         public IActionResult Index()
-        {
-            return View();
+        {   var posts = _postRepository.GetAllOrderByLatest();
+            var config = _config.GetSection("AWS");
+            var serviceUrl = config["ServiceUrl"] ?? "";
+            var bucket = config["Bucket"] ?? "";
+            ViewData["S3Url"] =  $"{serviceUrl}/{bucket}";
+            return View(posts);
         }
 
         public IActionResult Privacy()
