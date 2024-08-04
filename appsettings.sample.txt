@@ -1,0 +1,19 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.EntityFrameworkCore.Database.Command": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=127.0.0.1,1433\\mssql_22.04;Database=BlogApp;user id=<Username>;password=<Password>;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True; Integrated Security=False;"
+  },
+  "AWS": {
+    "AccessKeyId": "",
+    "SecretAccessKey": "",
+    "ServiceURL": "",
+    "Bucket": ""
+  }
+}
