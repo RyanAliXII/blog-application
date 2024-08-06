@@ -1,6 +1,5 @@
 using System.Configuration;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using BlogApplication.Areas.App.Models;
 using BlogApplication.Areas.App.ViewModels;
 using BlogApplication.Data;
@@ -12,6 +11,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using BlogApplication.Extensions;
 using MimeTypes;
+using BlogApplication.Helpers;
+using BlogApplication.Services.FileStorage.S3;
 
 namespace BlogApplication.Areas.App.Controllers
 {
@@ -25,6 +26,12 @@ namespace BlogApplication.Areas.App.Controllers
         protected readonly IEditorImageUrlExtractor _imageUrlExtractor;
         protected readonly PostRepository _postRepository; 
         protected readonly UserManager<User> _userManager;
+        protected readonly string _s3BucketName; 
+        protected readonly string _s3ServiceUrl;
+        protected readonly string _s3Url;
+        protected readonly string _temporaryFolderName = "temp";
+        protected readonly string _permanentFolderName = "contents";
+        protected const int FolderNameSegmentIndex = 2;
         public PostController(ILogger<PostController> 
             logger, IFileStorage fileStorage, 
             IConfiguration config, 
@@ -39,13 +46,14 @@ namespace BlogApplication.Areas.App.Controllers
             _imageUrlExtractor = imageUrlExtractor ;
             _postRepository = postRepository;
             _userManager = userManager;
+            var s3Config = _config.GetSection("AWS");
+            _s3BucketName = s3Config["Bucket"] ?? throw new ConfigurationErrorsException("Bucket is missing from configuration");
+            _s3ServiceUrl = s3Config["ServiceUrl"] ?? throw new ConfigurationErrorsException("ServiceUrl missing from configuration");
+            _s3Url = $"{_s3ServiceUrl}/{_s3BucketName}";
         }
         public IActionResult Create()
         {
-            var config = _config.GetSection("AWS");
-            var serviceUrl = config["ServiceUrl"] ?? "";
-            var bucket = config["Bucket"] ?? "";
-            ViewData["S3Url"] =  $"{serviceUrl}/{bucket}";
+            ViewData["S3Url"] =  _s3Url;
             return View();
         }
         
@@ -59,11 +67,7 @@ namespace BlogApplication.Areas.App.Controllers
                 if(post == null){
                     return NotFound();
                 }
-                
-                var config = _config.GetSection("AWS");
-                var serviceUrl = config["ServiceUrl"] ?? "";
-                var bucket = config["Bucket"] ?? "";
-                ViewData["S3Url"] =  $"{serviceUrl}/{bucket}";
+                ViewData["S3Url"] =  _s3Url;
                 return View(post); 
             }
             catch(Exception ex){
@@ -84,24 +88,24 @@ namespace BlogApplication.Areas.App.Controllers
                      errors = ModelState.ToValidationErrors()
                     });
                 }
-                var config = _config.GetSection("AWS");
-                var bucket = config["Bucket"] ?? throw new ConfigurationErrorsException("Bucket missing from configuration");
+               
                 if(!string.IsNullOrEmpty(post?.Thumbnail)){
-                    var newThumbnailKey = post.Thumbnail.Replace("temp", "contents");
-                    await _fileStorage.CopyFile(bucket, post.Thumbnail, newThumbnailKey);
+                    var newThumbnailKey = post.Thumbnail.Replace(_temporaryFolderName, _permanentFolderName);
+                    await _fileStorage.CopyFile(_s3BucketName, post.Thumbnail, newThumbnailKey);
                     post.Thumbnail = newThumbnailKey;
                 }
-                var baseUrl = $"{config["ServiceUrl"]}/{bucket}";
-
+                  
+                foreach(var block in _imageUrlExtractor.ExtractWithBaseUrl(post?.Content ?? [], _s3Url)){
                 /*
                     Extract image and replace their source from editor.
-                    Initially, when uploading an image, the image is stored in temporary folder named "temp" in a bucket.
-                    Upon submission, the images are then moved to another folder named "contents". 
-                    This is important because there is lifecycle rule in a bucket that deletes files in temp folder.
+                    Initially, when uploading an image, the image is stored in temporary folder.
+                    Upon submission, the images are then moved to permanent one. 
+                    This is important because there is lifecycle rule in a bucket that deletes files in temporary folder.
 
-                */    
-                foreach(var block in _imageUrlExtractor.ExtractWithBaseUrl(post?.Content ?? [], baseUrl )){
-                   await EditImageSourceAndMoveToAnotherLocation(block, bucket);
+                */ 
+                   var result = UpdateImageSourceFromTemporaryToPermanent(block);
+                   if(result is null) continue;
+                   await  _fileStorage.CopyFile(_s3BucketName, result.OldKey, result.NewKey);
                 }
         
                 var user = await _userManager.GetUserAsync(User);
@@ -127,7 +131,7 @@ namespace BlogApplication.Areas.App.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError("{ex}", ex);
+                _logger.LogError("{Exception} {Trace}", ex.Message, ex.StackTrace);
                  return StatusCode(StatusCodes.Status500InternalServerError, new {
                     status = StatusCodes.Status500InternalServerError,
                     message = "Unknown error occurred."
@@ -165,28 +169,21 @@ namespace BlogApplication.Areas.App.Controllers
                     });
                 }
                
-                var config = _config.GetSection("AWS");
-                var bucket = config["Bucket"] ?? throw new ConfigurationErrorsException("Bucket missing from configuration");
                 if(!string.IsNullOrEmpty(post.Thumbnail)){
-                    var newThumbnailKey = post.Thumbnail.Replace("temp", "contents");
-                    await _fileStorage.CopyFile(bucket, post.Thumbnail, newThumbnailKey);
-                    if(dbPost.Thumbnail is not null && dbPost.Thumbnail.Length > 0){
-                        await _fileStorage.DeleteFile(bucket, dbPost.Thumbnail);
+                    var newThumbnailKey = post.Thumbnail.Replace(_temporaryFolderName, _permanentFolderName);
+                    await _fileStorage.CopyFile(_s3BucketName, post.Thumbnail, newThumbnailKey);
+                    if(!string.IsNullOrEmpty(dbPost.Thumbnail)){
+                        await _fileStorage.DeleteFile(_s3BucketName, dbPost.Thumbnail);
                     }
                     dbPost.Thumbnail = newThumbnailKey;
                 }
-
-              
-                var baseUrl = $"{config["ServiceUrl"]}/{bucket}";
                 /*
-                    Assumes all uploaded images are new 
+                    Create a dictionary of image with url as key. This will be use for checking if images still exists in updated content.
                 */
-                var newImageUrls = _imageUrlExtractor.ExtractWithBaseUrl(post.Content, baseUrl).Aggregate(new Dictionary<string, string>(), (a, block)=>{
-                    var fileNode = GetImageFileNodeFromBlockDataObject(block.Data);
-                    if (fileNode is null) return a;
-                    var urlNode = fileNode["url"] as JsonValue;
-                    if (urlNode is null || urlNode.TryGetValue<string>(out var currentUrl) == false) return a;
-                    a[currentUrl] = currentUrl;
+                var newImageUrls = _imageUrlExtractor.ExtractWithBaseUrl(post.Content, _s3Url).Aggregate(new Dictionary<string, string>(), (a, block)=>{
+                    var source = EditorImageBlockSource.GetImageSource(block.Data);
+                    if(source.Value is null) return a;
+                    a[source.Value] = source.Value;
                     return a; 
                 });
                 var dbPostContent = JsonSerializer.Deserialize<List<EditorJSDataBlock>>(dbPost.Content);
@@ -197,37 +194,31 @@ namespace BlogApplication.Areas.App.Controllers
                             status = StatusCodes.Status500InternalServerError,
                     });
                 }
-                const int FolderNameSegmentIndex = 2;
-
-
-                foreach(var block in post.Content){
-                   if(block.Type == "image"){
-                        var fileNode = GetImageFileNodeFromBlockDataObject(block.Data);
-                        if(fileNode is null) continue;
-                        var urlString = ExtractUrlFromFileNode(fileNode);
-                        if (urlString is null) continue;
-                        var uri = new Uri(urlString);
-                        if(uri.Segments.Length < FolderNameSegmentIndex) continue;
-                        var folder =  uri.Segments[FolderNameSegmentIndex];
-                        if(folder == "temp/"){
-                            await EditImageSourceAndMoveToAnotherLocation(block, bucket);
-                        }                    
-                    } 
+                /*
+                   Get images using the base URL: S3 URL + temporary folder name. Then upload and update the image source.
+                 */
+                foreach (var block in _imageUrlExtractor.ExtractWithBaseUrl(post.Content, $"{_s3Url}/{_temporaryFolderName}/")){
+                    var source = EditorImageBlockSource.GetImageSource(block.Data);
+                    if(source.Value is null) continue;
+                    var result = UpdateImageSourceFromTemporaryToPermanent(block);
+                    if(result is null) continue;
+                    await _fileStorage.CopyFile(_s3BucketName, result.OldKey, result.NewKey);
                 }
 
+                /*
+                  Check old images still existed in the content, if not delete the image.
+                */
                 foreach(var block in dbPostContent){
                      if(block.Type == "image") {
-                        var fileNode = GetImageFileNodeFromBlockDataObject(block.Data);
-                        if(fileNode is null) continue;
-                        var urlString = ExtractUrlFromFileNode(fileNode);
-                        if (urlString is null) continue;
-                        if(!newImageUrls.ContainsKey(urlString)){
-                            var uri = new Uri(urlString);
+                        var source = EditorImageBlockSource.GetImageSource(block.Data);
+                        if(source.Value is null) continue;
+                        if(!newImageUrls.ContainsKey(source.Value)){
+                            var uri = new Uri(source.Value);
                             if(uri.Segments.Length < FolderNameSegmentIndex) continue;
                             var folder =  uri.Segments[FolderNameSegmentIndex]; 
                             var filename = uri.Segments.Last();
                             var key = $"{folder}{filename}";
-                            await _fileStorage.DeleteFile(bucket, key);
+                            await _fileStorage.DeleteFile(_s3BucketName, key);
                         }
                       
                     } 
@@ -235,7 +226,7 @@ namespace BlogApplication.Areas.App.Controllers
             
                 var jsonContent = JsonSerializer.Serialize(post?.Content ?? []);
                 dbPost.Content = jsonContent;
-                dbPost.Title = post?.Title ?? "";
+                dbPost.Title = post?.Title ?? string.Empty;
                 await _postRepository.SaveAsync();
                 return Ok(new {
                     message = "Post updated",  
@@ -274,8 +265,6 @@ namespace BlogApplication.Areas.App.Controllers
             
                 await _postRepository.DeleteAsync(id);
                 
-                var config = _config.GetSection("AWS");
-                var bucket = config["Bucket"] ?? throw new ConfigurationErrorsException("Bucket missing from configuration");
                 var dbPostContent = JsonSerializer.Deserialize<List<EditorJSDataBlock>>(dbPost.Content);
                 
                 if(dbPostContent is null){
@@ -285,24 +274,21 @@ namespace BlogApplication.Areas.App.Controllers
                             status = StatusCodes.Status500InternalServerError,
                     });
                 }
-                const int FolderNameSegmentIndex = 2;
                 foreach(var block in dbPostContent){
                     if(block.Type == "image"){
-                        var fileNode = GetImageFileNodeFromBlockDataObject(block.Data);
-                        if(fileNode is null) continue;
-                        var urlString = ExtractUrlFromFileNode(fileNode);
-                        if (urlString is null) continue;
-                        var uri = new Uri(urlString);
+                        var source = EditorImageBlockSource.GetImageSource(block.Data);
+                        if (source.Value is null) continue;
+                        var uri = new Uri(source.Value);
                         if(uri.Segments.Length < FolderNameSegmentIndex) continue;
                         var folder =  uri.Segments[FolderNameSegmentIndex];
                         var filename = uri.Segments.LastOrDefault();
                         var key = $"{folder}{filename}";
-                        await _fileStorage.DeleteFile(bucket, key);
+                        await _fileStorage.DeleteFile(_s3BucketName, key);
                     } 
                 }
                 if(dbPost.Thumbnail is not null){
                       if(dbPost.Thumbnail.Length > 0){
-                        await _fileStorage.DeleteFile(bucket, dbPost.Thumbnail);
+                        await _fileStorage.DeleteFile(_s3BucketName, dbPost.Thumbnail);
                       }
                 }
                 await _postRepository.SaveAsync();
@@ -327,12 +313,10 @@ namespace BlogApplication.Areas.App.Controllers
         {
             try{
                 using var fileStream = file.OpenReadStream();
-                var config = _config.GetSection("AWS");
-                var bucket = config["Bucket"] ?? throw new ConfigurationErrorsException("Bucket missing from configuration");
                 var filename = Guid.NewGuid().ToString();
                 var extension = MimeTypeMap.GetExtension(file.ContentType);
-                var key = $"temp/{filename}{extension}";
-                var response = await _fileStorage.NewUploader(fileStream, key, bucket)
+                var key = $"{_temporaryFolderName}/{filename}{extension}";
+                var response = await _fileStorage.NewUploader(fileStream, key, _s3BucketName)
                 .SetContentType(file.ContentType).UploadAsync();
                 return Ok(new
                 {
@@ -349,56 +333,38 @@ namespace BlogApplication.Areas.App.Controllers
            
         }
        
-
-        private JsonNode? GetImageFileNodeFromBlockDataObject(JsonObject? obj){
-             var fileNode = obj?["file"];
-             return fileNode;
-        }
-
-         private string? ExtractUrlFromFileNode(JsonNode? fileNode){
-             var urlNode = fileNode?["url"] as JsonValue;
-             return urlNode?.GetValue<string>();
-        }
-        private async Task EditImageSourceAndMoveToAnotherLocation(EditorJSDataBlock block, string bucket){
-            
-
-            const int FolderNameSegmentIndex = 2;
-            var fileNode = GetImageFileNodeFromBlockDataObject(block.Data);
-            if(fileNode is null) return;
-            var urlString = ExtractUrlFromFileNode(fileNode);
-            if (urlString is null) return;
-
-            var uri = new Uri(urlString);
-            
-            /*
-                The last segment of the url is the filename and the folder name is at 2nd Index.
-                Feel free to change this, if folder structure is changed.
-                For example: http://aws.amazon.com/sample-bucket/temp/robot.png
-                Segment[0] = "/"
-                Segment[1] = "sample-bucket/"
-                Segment[2] = "temp/"   This is the folder name
-                Segment[3] = "robot.png" This is the filename
-            */
-           
-            if(uri.Segments.Length < FolderNameSegmentIndex) return;
+        private UpdateImageSourceResult? UpdateImageSourceFromTemporaryToPermanent(EditorJSDataBlock block){
+            var imageSrc = EditorImageBlockSource.GetImageSource(block.Data);
+            if(imageSrc.Value is null) return null;
+            var uri = new Uri(imageSrc.Value);
+            if(uri.Segments.Length < FolderNameSegmentIndex) return null;
   
             var lastSegment = uri.Segments.LastOrDefault();
-            if (string.IsNullOrEmpty(lastSegment)) return;
+            if (string.IsNullOrEmpty(lastSegment)) return null;
             
             var segments = uri.Segments.ToList();
-            segments[FolderNameSegmentIndex] = "contents/"; // Update the folder name
+            segments[FolderNameSegmentIndex] = $"{_permanentFolderName}/"; // Update the folder name
 
             // Reconstruct the new URI
             var host = uri.IsDefaultPort ? uri.Host : $"{uri.Host}:{uri.Port}";
-            var newUriString = $"{uri.Scheme}://{host}{string.Join("", segments)}";
-          
-            var currentLocation = $"temp/{lastSegment}";
-            var newLocation = $"contents/{lastSegment}";
-            await _fileStorage.CopyFile(bucket, currentLocation, newLocation);
-             _logger.LogInformation(newUriString);
-            // Assign the new URL
-            fileNode["url"] = JsonValue.Create(newUriString);
+            var newUrl = $"{uri.Scheme}://{host}{string.Join("", segments)}";
             
+            var oldLocation =  $"{_temporaryFolderName}/{lastSegment}";
+            var newLocation = $"{_permanentFolderName}/{lastSegment}";
+            imageSrc.UpdateSource(newUrl);
+            return new UpdateImageSourceResult{
+                NewKey = newLocation,
+                NewUrl = newUrl,
+                OldKey = oldLocation,
+            };
         }
+    
+        
     }
+    record UpdateImageSourceResult{
+        public string NewUrl = string.Empty;
+        public string NewKey = string.Empty;
+        public string OldKey = string.Empty;
+    }
+  
 }
