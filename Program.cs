@@ -49,6 +49,10 @@ builder.Services.AddControllersWithViews(options =>
 builder.Services.AddAuthorization(options=>{
     options.AddPolicy("PostOwnerPolicy", policy => policy.Requirements.Add(new PostOwnerRequirement()));
 });
+builder.Services.AddAuthentication().AddGoogle( options=>{
+    options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? throw(new Exception("Google auth client id cannot be null or empty."));
+    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? throw(new Exception("Google auth client secret cannot be null or empty."));
+});
 builder.Services.AddScoped<IAuthorizationHandler, PostOwnerHandler>();
 
 var app = builder.Build();
