@@ -18,6 +18,7 @@ builder.Services.AddSingleton(sp => S3.CreateClient(builder.Configuration));
 builder.Services.AddScoped<IFileStorage>(sp => new S3FileStorage(sp.GetRequiredService<IAmazonS3>()));
 builder.Services.AddScoped<IEditorImageUrlExtractor, EditorJSImageUrlExtractor>();
 builder.Services.AddScoped<PostRepository, PostRepository>();
+builder.Services.AddRouting(options=> options.LowercaseUrls = true);
 builder.Services.AddIdentity<User, Role>(options =>
 {
     options.SignIn.RequireConfirmedAccount = false;

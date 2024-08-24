@@ -22,7 +22,7 @@ namespace BlogApplication.Areas.App.Controllers
             return View();
         }
         [HttpPost]
-        public async Task<IActionResult> Index(LoginModel creds)
+        public async Task<IActionResult> Index(LoginModel creds, [FromQuery] string? ReturnUrl)
         {
 
             if (!ModelState.IsValid)
@@ -37,7 +37,11 @@ namespace BlogApplication.Areas.App.Controllers
                 creds.Password = "";
                 return View(creds);
             }
-            return RedirectToAction("Index", "Dashboard");
+            if(string.IsNullOrEmpty(ReturnUrl)){
+                return RedirectToAction("Index", "Dashboard");
+            }
+            return Redirect(ReturnUrl);
+            
         }
     }
 }
