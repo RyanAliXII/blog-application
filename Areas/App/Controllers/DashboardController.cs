@@ -20,7 +20,6 @@ namespace BlogApplication.Areas.App.Controllers
             _userManager = userManager;
             _config = config;
         }
-  
         public async Task<IActionResult> Index()
         {   var config = _config.GetSection("AWS");
             
