@@ -1,5 +1,7 @@
+using System.Net;
 using System.Security.Claims;
 using BlogApplication.Data;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,23 +12,33 @@ namespace BlogApplication.Areas.App.Controllers{
         private readonly ILogger<ExternalAuthController> _logger;
         private readonly SignInManager<User> _signInManager;
         private readonly UserManager<User> _userManager;
-        public ExternalAuthController(ILogger<ExternalAuthController> logger, SignInManager<User> signInManager, UserManager<User> userManager){
+        private readonly IAuthenticationSchemeProvider _authSchemeProvider;
+        public ExternalAuthController(ILogger<ExternalAuthController> logger, SignInManager<User> signInManager, UserManager<User> userManager, IAuthenticationSchemeProvider authSchemeProvider){
             _logger = logger;
             _signInManager = signInManager;
             _userManager = userManager;
+            _authSchemeProvider = authSchemeProvider; 
          }
         [Route("app/external-auth")]
-        public IActionResult ExternalAuth(string provider, string returnUrl = ""){
+        public async Task<IActionResult> ExternalAuth(string provider, string returnUrl = ""){
             try{
                 /*
                     Initiates external authentication by redirecting the user to the chosen provider's login page (e.g., Google).
                     The 'redirectUrl' is crucial because, after a successful login, the provider will redirect the user to this URL.
                     This URL should point to a route in your application that handles the authentication logic after 
                     the external login (see the method in this class named 'ExternalAuthCallback'). 
-
-                    If 'returnUrl' is not specified, the user will be redirected to the dashboard ('/app/dashboard') after login.
                 */
+
+                //  If 'returnUrl' is not specified, the user will be redirected to the dashboard ('/app/dashboard') after login.
                 returnUrl = string.IsNullOrEmpty(returnUrl) ? "/app/dashboard" : returnUrl;
+                var authScheme = await _authSchemeProvider.GetSchemeAsync(provider);
+
+                // Validate authentication scheme if supported and configured.
+                if(authScheme is null){
+                    _logger.LogError("Authentication schem is not supported {Provider}", provider);
+                    return RedirectToAction("Index", "Login");  
+                }
+
                 var redirectUrl = Url.Action("ExternalAuthCallback", "ExternalAuth", new {
                     returnUrl,
                 });
@@ -35,7 +47,7 @@ namespace BlogApplication.Areas.App.Controllers{
             }
             catch(Exception ex){
                 _logger.LogError(ex.Message);
-                return RedirectToAction("Index", "App/Login");
+                return RedirectToAction("Index", "Login");
             }
            
         }
