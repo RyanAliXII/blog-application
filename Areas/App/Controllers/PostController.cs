@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using BlogApplication.Extensions;
 using MimeTypes;
 using BlogApplication.Helpers;
-using BlogApplication.Services.FileStorage.S3;
+
 
 namespace BlogApplication.Areas.App.Controllers
 {

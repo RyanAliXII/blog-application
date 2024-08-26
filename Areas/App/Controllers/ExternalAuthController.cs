@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BlogApplication.Areas.App.Controllers{
+
+    [Area("App")]
     public class ExternalAuthController: Controller{
         private readonly ILogger<ExternalAuthController> _logger;
         private readonly SignInManager<User> _signInManager;
@@ -33,24 +35,24 @@ namespace BlogApplication.Areas.App.Controllers{
             try{
                 if(!string.IsNullOrEmpty(remoteError)){
                     _logger.LogError("Remote Error : {RemoteError}", remoteError);
-                    return RedirectToAction("Index", "Login", new {Area = "App"}); 
+                    return RedirectToAction("Index", "Login"); 
                 } 
               
                 var info = await _signInManager.GetExternalLoginInfoAsync();
                 if(info is null) {
                     _logger.LogError("External login info is null");
-                    return RedirectToAction("Index", "Login", new{Area = "App"}); 
+                    return RedirectToAction("Index", "Login"); 
                 }
                 var signInResult = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, 
                 info.ProviderKey, isPersistent: true);
                 
-                if(signInResult.Succeeded) return RedirectToAction("Index", "Dashboard", new{ Area = "App"});
+                if(signInResult.Succeeded) return RedirectToAction("Index", "Dashboard");
            
                 var email = info.Principal.FindFirstValue(ClaimTypes.Email);
                 var givenName = info.Principal.FindFirstValue(ClaimTypes.GivenName);
                 var surname = info.Principal.FindFirstValue(ClaimTypes.Surname);
 
-                if(string.IsNullOrEmpty(email)) return RedirectToAction("Index", "Login", new{Area = "App"}); 
+                if(string.IsNullOrEmpty(email)) return RedirectToAction("Index", "Login"); 
 
                 var user = await _userManager.FindByEmailAsync(email);
                 if(user is null){
@@ -64,20 +66,20 @@ namespace BlogApplication.Areas.App.Controllers{
                    var createResult =  await _userManager.CreateAsync(user);
                    if(!createResult.Succeeded){
                     _logger.LogError("User creation failed for user with email '{Email}' and named '{GivenName} {Surname}' ", email, givenName, surname);
-                     return RedirectToAction("Index", "Login", new { Area = "App" });
+                     return RedirectToAction("Index", "Login");
                    }
                   var createExternalLoginResult =  await _userManager.AddLoginAsync(user, info);
                   if(!createExternalLoginResult.Succeeded){
                      _logger.LogError("External login creation failed for user with email '{Email}' and named '{GivenName} {Surname}' ", email, givenName, surname);
-                     return RedirectToAction("Index", "Login", new { Area = "App" });
+                     return RedirectToAction("Index", "Login");
                   }
              }
          
             await _signInManager.SignInAsync(user, isPersistent:true);
-            return RedirectToAction("Index", "Dashboard", new {Area = "App"});
+            return RedirectToAction("Index", "Dashboard");
          }catch(Exception ex){
              _logger.LogError(ex.Message);
-             return RedirectToAction("Index", "Login", new {Area = "App"});
+             return RedirectToAction("Index", "Login");
          }
     }
     }
