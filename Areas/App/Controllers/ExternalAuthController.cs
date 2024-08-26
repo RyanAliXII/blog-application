@@ -31,9 +31,16 @@ namespace BlogApplication.Areas.App.Controllers{
         [Route("app/external-auth-callback")]
         public async Task<IActionResult> ExternalAuthCallback(string returnUrl = "", string remoteError = ""){
             try{
-                if(!string.IsNullOrEmpty(remoteError)) return RedirectToAction("Index", "Login", new {Area = "App"}); 
+                if(!string.IsNullOrEmpty(remoteError)){
+                    _logger.LogError("Remote Error : {RemoteError}", remoteError);
+                    return RedirectToAction("Index", "Login", new {Area = "App"}); 
+                } 
+              
                 var info = await _signInManager.GetExternalLoginInfoAsync();
-                if(info is null) return RedirectToAction("Login", "Login");
+                if(info is null) {
+                    _logger.LogError("External login info is null");
+                    return RedirectToAction("Index", "Login", new{Area = "App"}); 
+                }
                 var signInResult = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, 
                 info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
             
@@ -53,7 +60,11 @@ namespace BlogApplication.Areas.App.Controllers{
                         EmailConfirmed = true,
                         UserName = email
                     };
-                    await _userManager.CreateAsync(user);
+                   var createResult =  await _userManager.CreateAsync(user);
+                   if(!createResult.Succeeded){
+                    _logger.LogError("User creation failed for user with email '{Email}' and named '{GivenName} {Surname}' ", email, givenName, surname);
+                     return RedirectToAction("Index", "Login", new { Area = "App" });
+                   }
                 }
             await _signInManager.SignInAsync(user, isPersistent:true);
             return RedirectToAction("Index", "Dashboard", new {Area = "App"});
