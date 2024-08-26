@@ -16,47 +16,50 @@ namespace BlogApplication.Areas.App.Controllers{
          [Route("app/external-auth")]
           public IActionResult ExternalAuth(string provider, string returnUrl = ""){
             try{
-            var redirectUrl = Url.Action("ExternalLoginCallback", "Login", new {
-                            ReturnUrl = returnUrl,
+            var redirectUrl = Url.Action("ExternalAuthCallback", "ExternalAuth", new {
+                ReturnUrl = returnUrl,
             });
              var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
              return new ChallengeResult(provider, properties);
             }
             catch(Exception ex){
                 _logger.LogError(ex.Message);
-                return RedirectToAction("Index", "Login");
+                return RedirectToAction("Index", "App/Login");
             }
            
         }
         [Route("app/external-auth-callback")]
         public async Task<IActionResult> ExternalAuthCallback(string returnUrl = "", string remoteError = ""){
             try{
-                if(!string.IsNullOrEmpty(remoteError)) return RedirectToAction("Index", "Login"); 
+                if(!string.IsNullOrEmpty(remoteError)) return RedirectToAction("Index", "Login", new {Area = "App"}); 
                 var info = await _signInManager.GetExternalLoginInfoAsync();
                 if(info is null) return RedirectToAction("Login", "Login");
                 var signInResult = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, 
                 info.ProviderKey, isPersistent: false, bypassTwoFactor: true);
             
-                if(signInResult.Succeeded) return RedirectToAction("Index", "Dashboard");
+                if(signInResult.Succeeded) return RedirectToAction("Index", "Dashboard", new{ Area = "App"});
                 var email = info.Principal.FindFirstValue(ClaimTypes.Email);
-                
-                if(string.IsNullOrEmpty(email)) return RedirectToAction("Index", "Login"); 
+                var givenName = info.Principal.FindFirstValue(ClaimTypes.GivenName);
+                var surname = info.Principal.FindFirstValue(ClaimTypes.Surname);
+                if(string.IsNullOrEmpty(email)) return RedirectToAction("Index", "Login", new{Area = "App"}); 
 
                 var user = await _userManager.FindByEmailAsync(email);
 
                 if(user is null){
                     user = new(){
                         Email = email,
+                        GivenName = givenName ?? "",
+                        Surname = surname ?? "",
                         EmailConfirmed = true,
                         UserName = email
                     };
                     await _userManager.CreateAsync(user);
                 }
             await _signInManager.SignInAsync(user, isPersistent:true);
-            return RedirectToAction("Index", "Dashboard");
+            return RedirectToAction("Index", "Dashboard", new {Area = "App"});
          }catch(Exception ex){
              _logger.LogError(ex.Message);
-             return RedirectToAction("Index", "Login");
+             return RedirectToAction("Index", "Login", new {Area = "App"});
          }
     }
     }
