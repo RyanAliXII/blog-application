@@ -1,5 +1,4 @@
 using BlogApplication.Areas.App.ViewModels;
-
 using BlogApplication.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
