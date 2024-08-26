@@ -98,7 +98,7 @@ namespace BlogApplication.Areas.App.Controllers{
                 }
                 // Sign in the user after successfully binding the external login.
                 await _signInManager.SignInAsync(user, isPersistent:true);
-                return RedirectToAction(returnUrl);
+                return Redirect(returnUrl);
          }catch(Exception ex){
              _logger.LogError(ex.Message);
              return RedirectToAction("Index", "Login");
