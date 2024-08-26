@@ -73,7 +73,7 @@ namespace BlogApplication.Areas.App.Controllers{
                 
                 /* 
                     If external login is unsuccessful, attempt to find the user by email. 
-                    If the user is not found, create a new one. Bind the external login to the new user.
+                    If the user is not found, create a new one.
                 */
                 var user = await _userManager.FindByEmailAsync(email);
                 if(user is null){
@@ -91,6 +91,7 @@ namespace BlogApplication.Areas.App.Controllers{
                    }
                  
                 }
+                //Bind the external login to the user.
                 var createExternalLoginResult =  await _userManager.AddLoginAsync(user, info);
                 if(!createExternalLoginResult.Succeeded){
                     _logger.LogError("External login creation failed for user with email '{Email}' and named '{GivenName} {Surname}' ", email, givenName, surname);
