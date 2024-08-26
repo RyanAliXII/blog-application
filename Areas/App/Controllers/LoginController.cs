@@ -23,7 +23,7 @@ namespace BlogApplication.Areas.App.Controllers
         [HttpPost]
         public async Task<IActionResult> Index(LoginModel creds, [FromQuery] string? ReturnUrl)
         {
-
+            ReturnUrl = string.IsNullOrEmpty(ReturnUrl) ? "/app/dashboard" : ReturnUrl;
             if (!ModelState.IsValid)
             {
                 ViewData["Message"] = "Invalid Credentials";

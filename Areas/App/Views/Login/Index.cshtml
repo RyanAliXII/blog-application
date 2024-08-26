@@ -62,21 +62,22 @@
                             class="absolute px-3 font-medium text-gray-900 -translate-x-1/2 bg-white left-1/2 dark:text-white dark:bg-gray-900">or</span>
                     </div>
                     <div>
-                        @foreach(var provider in schemes){
-                          <a href="/app/external-auth?provider=@provider.Name&returnUrl=/app/external-auth-callback"
-                        class="block py-2.5 px-5  text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
-                    
-                        <div class="flex items-center gap-2 justify-center">
-                            <i class="fa-brands fa-google"></i>
-                                Sign
-                            in with @provider.Name
-                        </div>
+                        @foreach (var provider in schemes)
+                        {
+                            <a href="/app/external-auth?provider=@provider.Name&returnUrl=/app/dashboard"
+                                class="block py-2.5 px-5  text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
 
-                    </a>   
+                                <div class="flex items-center gap-2 justify-center">
+                                    <i class="fa-brands fa-google"></i>
+                                    Sign
+                                    in with @provider.Name
+                                </div>
+
+                            </a>
                         }
-                       
+
                     </div>
-                 
+
                     <p class="text-sm font-light text-gray-500 dark:text-gray-400">
                         Don’t have an account yet? <a href="/App/Register"
                             class="font-medium text-primary-600 hover:underline dark:text-primary-500">Sign up</a>
