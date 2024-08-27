@@ -49,8 +49,11 @@ builder.Services.AddAuthorization(options=>{
     options.AddPolicy("PostOwnerPolicy", policy => policy.Requirements.Add(new PostOwnerRequirement()));
 });
 builder.Services.AddAuthentication().AddGoogle( options=>{
-    options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? throw(new Exception("Google auth client id cannot be null or empty."));
-    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? throw(new Exception("Google auth client secret cannot be null or empty."));   
+    options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? throw new Exception("Google auth client id cannot be null or empty.");
+    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? throw new Exception("Google auth client secret cannot be null or empty.");   
+}).AddMicrosoftAccount(options=>{
+    options.ClientId = builder.Configuration["Authentication:Microsoft:ClientId"] ?? throw new Exception("Microsoft auth client id cannot be null or empty.");
+    options.ClientSecret = builder.Configuration["Authentication:Microsoft:ClientSecret"] ?? throw new Exception("Microsoft auth client secret cannot be null or empty."); 
 });
 builder.Services.AddScoped<IAuthorizationHandler, PostOwnerHandler>();
 
