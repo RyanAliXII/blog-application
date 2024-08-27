@@ -1,5 +1,4 @@
 using BlogApplication.Areas.App.ViewModels;
-
 using BlogApplication.Data;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -22,9 +21,9 @@ namespace BlogApplication.Areas.App.Controllers
             return View();
         }
         [HttpPost]
-        public async Task<IActionResult> Index(LoginModel creds)
+        public async Task<IActionResult> Index(LoginModel creds, [FromQuery] string? ReturnUrl)
         {
-
+            ReturnUrl = string.IsNullOrEmpty(ReturnUrl) ? "/app/dashboard" : ReturnUrl;
             if (!ModelState.IsValid)
             {
                 ViewData["Message"] = "Invalid Credentials";
@@ -37,7 +36,11 @@ namespace BlogApplication.Areas.App.Controllers
                 creds.Password = "";
                 return View(creds);
             }
-            return RedirectToAction("Index", "Dashboard");
+            if(string.IsNullOrEmpty(ReturnUrl)){
+                return RedirectToAction("Index", "Dashboard");
+            }
+            return Redirect(ReturnUrl);
+            
         }
     }
 }

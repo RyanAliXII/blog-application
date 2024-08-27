@@ -15,5 +15,11 @@
     "SecretAccessKey": "",
     "ServiceURL": "",
     "Bucket": ""
+  },
+   "Authentication": {
+    "Google": {
+      "ClientId": "",
+      "ClientSecret": ""
+    }
   }
 }
