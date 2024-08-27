@@ -4,8 +4,17 @@
 @inject SignInManager<User> _signInManager;
 @{
     Layout = "_BaseLayout";
+
+
+
     ViewData["Title"] = "Sign In | Blog App";
+
+
+
     var Message = ViewData["Message"] as string ?? "";
+
+
+
     var schemes = await _signInManager.GetExternalAuthenticationSchemesAsync();
 }
 <section class="bg-gray-50 dark:bg-gray-900">
@@ -21,6 +30,9 @@
                     Sign in to your account
                 </h1>
                 @if (Message.Length > 0)
+
+
+
                 {
                     <div class="flex items-center p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
                         role="alert">
@@ -61,15 +73,20 @@
                         <span
                             class="absolute px-3 font-medium text-gray-900 -translate-x-1/2 bg-white left-1/2 dark:text-white dark:bg-gray-900">or</span>
                     </div>
-                    <div>
+                    <div class="flex flex-col gap-2">
                         @foreach (var provider in schemes)
                         {
                             <a href="/app/external-auth?provider=@provider.Name&returnUrl=/app/dashboard"
                                 class="block py-2.5 px-5  text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-blue-700 focus:z-10 focus:ring-4 focus:ring-gray-100 dark:focus:ring-gray-700 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:text-white dark:hover:bg-gray-700">
 
                                 <div class="flex items-center gap-2 justify-center">
-                                    @if(provider.Name == "Google"){
+                                    @if (provider.Name == "Google")
+                                    {
                                         <i class="fa-brands fa-google"></i>
+                                    }
+                                    @if (provider.Name == "Microsoft")
+                                    {
+                                        <i class="fa-brands fa-microsoft"></i>
                                     }
                                     Sign
                                     in with @provider.Name
